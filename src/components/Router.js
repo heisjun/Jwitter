@@ -1,24 +1,27 @@
 import React from "react";
 import { HashRouter as Router, Route, Routes } from "react-router-dom";
-import Auth from "routes/Auth";
 import Home from "routes/Home";
-import Navigation from "components/Navigation";
 import Profile from "routes/Profile";
+import LoginPage from "routes/LoginPage";
+import NweetDetail from "./NweetDetail";
 
 // eslint-disable-next-line import/no-anonymous-default-export
-const AppRouter = ({ isLoggedIn, userObj }) => {
+const AppRouter = ({ isLoggedIn, userObj, refreshUser }) => {
   return (
     <Router>
-      {isLoggedIn && <Navigation />}
       <Routes>
         {isLoggedIn ? (
           <>
             <Route path="/" element={<Home userObj={userObj} />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route
+              path="/profile"
+              element={<Profile userObj={userObj} refreshUser={refreshUser} />}
+            />
+            <Route path="/:id" element={<NweetDetail />} />
           </>
         ) : (
           <>
-            <Route path="/" element={<Auth />} />
+            <Route path="/" element={<LoginPage />} />
             <Route path="*" element={<Home />} />
           </>
         )}
