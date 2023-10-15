@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { dbService, dbGetDoc, dbCollection, storageService } from "fbase";
 import {
   collection,
@@ -9,17 +9,21 @@ import {
 } from "firebase/firestore";
 import { v4 as uuid } from "uuid";
 import { ref, uploadString, getDownloadURL } from "@firebase/storage";
-import Nweet from "components/\bNweet";
+import Navigation from "components/Navigation";
+import Nweet from "components/Nweet";
+import styled from "styled-components";
+import { IoImageOutline } from "react-icons/io5";
 
 const Home = ({ userObj }) => {
   const [nweet, setNweet] = useState("");
   const [nweets, setNweets] = useState([]);
   const [fileUrl, setFileUrl] = useState("");
+  const textRef = useRef();
 
   useEffect(() => {
     const q = query(
       collection(dbService, "nweets"),
-      orderBy("createdAt", "desc")
+      orderBy("createTime", "desc")
     );
     onSnapshot(q, (snapshot) => {
       const nweetArr = snapshot.docs.map((doc) => ({
@@ -43,9 +47,13 @@ const Home = ({ userObj }) => {
     }
     const nweetObj = {
       text: nweet,
-      createdAt: Date.now(),
+      createdAt: new Date().toString(),
+      createTime: new Date(),
       creatorId: userObj.uid,
       creatorPic: userObj.photoURL,
+      creatorName: userObj.displayName,
+      postId: uuid(),
+      comment: [],
       attachmentUrl,
     };
 
@@ -69,34 +77,159 @@ const Home = ({ userObj }) => {
     };
     reader.readAsDataURL(theFile);
   };
+
+  const imgRef = useRef(null);
+
+  const onClickFileBtn = () => {
+    imgRef.current.click();
+  };
   return (
-    <div>
-      <form onSubmit={onSubmit}>
-        <input
-          type="text"
-          placeholder="무슨일이 일어났나요?"
-          maxLength={120}
-          onChange={onChange}
-          value={nweet}
-        />
-        <input type="file" accept="image/*" onChange={onFileChange} />
-        {fileUrl && (
-          <div>
-            <img src={fileUrl} style={{ width: 100 }} />
-            <button onClick={() => setFileUrl()}>삭제</button>
+    <StyledHomeContainer>
+      <Navigation userObj={userObj} />
+      <HomeContainer>
+        <TweetContainer onSubmit={onSubmit}>
+          {userObj.photoURL ? (
+            <UserImg src={userObj.photoURL} />
+          ) : (
+            <UserImg src="avatar.png" />
+          )}
+          <div style={{ width: "100%" }}>
+            <StyledTextArea
+              type="text"
+              placeholder="무슨일이 일어났나요?"
+              maxLength={120}
+              onChange={onChange}
+              value={nweet}
+              ref={textRef}
+            />
+            {fileUrl && (
+              <div style={{ position: "relative" }}>
+                <StyledUploadImg src={fileUrl} />
+                <StyledDeleteBtn onClick={() => setFileUrl()}>
+                  X
+                </StyledDeleteBtn>
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <StyledPreviewBtn onClick={onClickFileBtn}>
+                <IoImageOutline style={{ fontSize: 20 }} />
+              </StyledPreviewBtn>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={onFileChange}
+                style={{ display: "none" }}
+                ref={imgRef}
+              />
+
+              <StyledSubmitBtn type="submit" value="Jweet" />
+            </div>
           </div>
-        )}
-        <input type="submit" value="Jweet" />
-      </form>
-      {nweets.map((item, index) => (
-        <Nweet
-          nweetObj={item}
-          key={index}
-          isOwner={item.creatorId === userObj.uid ? true : false}
-        />
-      ))}
-    </div>
+        </TweetContainer>
+
+        <NweetContainer>
+          {nweets.map((item, index) => (
+            <Nweet
+              nweetObj={item}
+              userObj={userObj}
+              key={index}
+              isOwner={item.creatorId === userObj.uid ? true : false}
+            />
+          ))}
+        </NweetContainer>
+      </HomeContainer>
+    </StyledHomeContainer>
   );
 };
 
+const StyledHomeContainer = styled.div`
+  display: flex;
+  padding-left: 5%;
+`;
+const StyledSubmitBtn = styled.input`
+  border: none;
+  border-radius: 20px;
+  background-color: #3f86f4;
+  padding: 0px 10px;
+  color: white;
+  font-weight: 300;
+`;
+const StyledUploadImg = styled.img`
+  position: relative;
+  border-radius: 10px;
+  width: 100%;
+`;
+
+const StyledDeleteBtn = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: black;
+  opacity: 0.7;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: white;
+  border: none;
+  font-size: 20px;
+  z-index: 10;
+  &:hover {
+    opacity: 0.5;
+  }
+`;
+
+const TweetContainer = styled.form`
+  display: flex;
+  padding: 10px;
+  box-sizing: border-box;
+  width: 600px;
+  height: auto;
+  textarea:focus {
+    outline: none;
+  }
+`;
+const UserImg = styled.img`
+  width: 40px;
+  height: 40px;
+  border-radius: 100%;
+  margin-right: 12px;
+`;
+
+const StyledTextArea = styled.textarea`
+  width: 100%;
+  resize: none;
+  height: auto;
+  border: none;
+  font-size: 20px;
+  padding: 10px 0px;
+`;
+
+const HomeContainer = styled.div`
+  position: relative;
+  left: 250px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 50px;
+`;
+
+const NweetContainer = styled.div`
+  border-top: 1px solid #eff3f4;
+  border-right: 1px solid #eff3f4;
+  border-left: 1px solid #eff3f4;
+`;
+
+const StyledPreviewBtn = styled.div`
+  cursor: pointer;
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  &:hover {
+    background-color: #e7e7e8;
+  }
+`;
 export default Home;
